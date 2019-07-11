@@ -1,79 +1,32 @@
 #include <iostream>
-#include <array>
+#include <vector>
 
-#define FRAMESIZE 10
+#include "NodeL.cc"
+//#include "UE.cc"
 
-#define HEADER 'H'
-#define REQUEST 'Q'
+#define SIMEND 2
+#define NUM_UE 2
 
-std::array<char, FRAMESIZE> getFrame() {
-	std::array<char, FRAMESIZE> frame = std::array<char, FRAMESIZE>();
-	frame[0] = HEADER;
-	frame[8] = REQUEST;
-	return frame;
-}
+int main(void) {
 
-void decFrame(std::array<char, FRAMESIZE> frame, int i) {
-	char& data = frame.at(i);
-	std::cout << data << std::endl;
-}
-
-class UE {
-private:
-	int givenSlot;
-	int currentSlot ;
-	bool canSend;
-	bool isJoined;
-	char data;
-	char sendBuff;
-
-public:
-	void listen(char data) {
-		std::cout << "UE< " <<  data << std::endl;
-		currentSlot = (data == HEADER) ? 0 : currentSlot  + 1;
-		std::cout << currentSlot << std::endl;
-		if (isJoined) {
-			if (currentSlot == givenSlot) {
-				this->data = data;
-				canSend = true;
-			}
-		} else {
-			if (data == REQUEST) {
-				canSend = true;
-			}
+	auto nodeL = new NodeL(0);
+	auto ueList = new std::vector<UE*>();
+	for (int i = 0; i < NUM_UE; i++)
+		ueList->push_back(new UE(i));
+	
+	for (int i = 0; i < SIMEND; i++)  {
+		char msg;
+		msg = nodeL->out();
+		for (UE* ue : *ueList) {
+			ue->in(msg);
+			if (ue->out() != '\0')
+				msg = ue->out();
+		}
+		nodeL->in(msg);
+		
+		nodeL->tick();
+		for (UE* ue : *ueList) {
+			ue->tick();
 		}
 	}
-
-	void join() {
-		if (!isJoined)
-			sendBuff = REQUEST;
-	}
-
-	void calc() {
-		sendBuff = 'S';
-	}
-
-	char send() {
-		if (!isJoined)
-			join();
-		if (canSend)
-			return sendBuff;
-	}
-};
-
-int main(int argc, char const *argv[]) {
-	std::array<char, FRAMESIZE> frame;
-	frame = getFrame();
-	
-	UE* ue = new UE();
-
-	for (int i = 0; i < FRAMESIZE; i++) {
-		char& data = frame.at(i);
-		ue->listen(data);
-		std::cout << "UE> " << ue->send() << std::endl;
-	}
-
-	free(ue);
-	
-	return 0;
 }
